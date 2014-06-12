@@ -1,28 +1,29 @@
 package es.sedica.photogame.activities;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
-import es.sedica.photogame.R;
-import es.sedica.photogame.R.id;
-import es.sedica.photogame.R.layout;
-import es.sedica.photogame.R.menu;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
-import android.view.LayoutInflater;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup;
 import android.widget.Button;
+import es.sedica.photogame.R;
+import es.sedica.photogame.components.GameManager;
 
-public class ChoosePhotoActivity extends ActionBarActivity implements OnClickListener {
+public class ChoosePhotoActivity extends ActionBarActivity implements
+		OnClickListener {
 
 	private static final int CHOOSE_PHOTO_RESULT = 10;
 
@@ -31,11 +32,9 @@ public class ChoosePhotoActivity extends ActionBarActivity implements OnClickLis
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_choose_photo);
 
-		if (savedInstanceState == null) {
-			getSupportFragmentManager().beginTransaction()
-					.add(R.id.container, new PlaceholderFragment()).commit();
-		}
-		
+		Button btnChoose = (Button) findViewById(R.id.btnChoosePhoto);
+		btnChoose.setOnClickListener(this);
+
 	}
 
 	@Override
@@ -61,65 +60,62 @@ public class ChoosePhotoActivity extends ActionBarActivity implements OnClickLis
 	/**
 	 * A placeholder fragment containing a simple view.
 	 */
-	public static class PlaceholderFragment extends Fragment implements OnClickListener{
-
-		public PlaceholderFragment() {
-			
-		}
-
-		@Override
-		public void onClick(View v) {
-			switch(v.getId()){
-			case R.id.btnChoosePhoto:
-				Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-				photoPickerIntent.setType("image/*");
-				startActivityForResult(photoPickerIntent, CHOOSE_PHOTO_RESULT);
-				break;
-			
-			}
-		}
-		
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState) {
-			View rootView = inflater.inflate(R.layout.fragment_choose_photo,
-					container, false);
-			try {
-				Button btnChoose=(Button) rootView.findViewById(R.id.btnChoosePhoto);
-				btnChoose.setOnClickListener(this);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return rootView;
-		}
-	}
-
-	
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent imageReturnedIntent) { 
-	    super.onActivityResult(requestCode, resultCode, imageReturnedIntent); 
-
-	    switch(requestCode) { 
-	    case CHOOSE_PHOTO_RESULT:
-	        if(resultCode == RESULT_OK){  
-	            Uri selectedImage = imageReturnedIntent.getData();
-	            InputStream imageStream;
-				try {
-					imageStream = getContentResolver().openInputStream(selectedImage);
-					Bitmap yourSelectedImage = BitmapFactory.decodeStream(imageStream);
-					// TODO - Start Splitter Activity
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-	            
-	        }
-	    }
-	}
 
 	@Override
 	public void onClick(View v) {
-		// TODO Auto-generated method stub
-		
+		switch (v.getId()) {
+		case R.id.btnChoosePhoto:
+			Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+			photoPickerIntent.setType("image/*");
+			startActivityForResult(photoPickerIntent, CHOOSE_PHOTO_RESULT);
+			break;
+
+		}
 	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode,
+			Intent imageReturnedIntent) {
+		super.onActivityResult(requestCode, resultCode, imageReturnedIntent);
+
+		Log.d("ChoosePhotoActivity", "Chosen photo");
+
+		switch (requestCode) {
+		case CHOOSE_PHOTO_RESULT:
+			if (resultCode == RESULT_OK) {
+				Uri selectedImage = imageReturnedIntent.getData();
+				Intent intent = new Intent(this, BoardActivity.class);
+				try {
+					intent.putExtra("initImage", saveTmpImage(selectedImage));
+					GameManager gm=new GameManager(3, 4);
+					intent.putExtra("game", gm);
+					startActivity(intent);
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+		}
+	}
+
+	private String saveTmpImage(Uri selectedImage) throws IOException {
+		InputStream imageStream;
+		Bitmap yourSelectedImage = null;
+		imageStream = getContentResolver().openInputStream(selectedImage);
+		File outputFile = File.createTempFile( this.hashCode()+"",null, this.getCacheDir());
+		FileOutputStream fos=new FileOutputStream(outputFile);
+		byte[] buffer = new byte[1024];
+		int len = imageStream.read(buffer);
+		while (len != -1) {
+		    fos.write(buffer, 0, len);
+		    len = imageStream.read(buffer);
+		}
+		fos.close();
+		return outputFile.getAbsolutePath();
+	}
+
 }
